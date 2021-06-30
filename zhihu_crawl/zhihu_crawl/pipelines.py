@@ -5,6 +5,7 @@
 
 
 # useful for handling different item types with a single interface
+import redis
 from itemadapter import ItemAdapter
 
 
@@ -14,7 +15,15 @@ class ZhihuCrawlPipeline:
 
 
 class TopicCrawlPipeline:
+    def __init__(self):
+        self.redis_con = redis.Redis(
+            host='localhost',
+            port=6379,
+            db=11
+        )
+
     def process_item(self, item, spider):
+        redis_key = 'question_crawler:start_urls'
         return item
 
 

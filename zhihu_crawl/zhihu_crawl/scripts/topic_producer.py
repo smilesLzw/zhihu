@@ -40,21 +40,27 @@ def download(topic_id, offset):
 def topic_task_producer(topic_data):
     redis_key = 'topic_crawler:start_urls'
     for data in topic_data:
-        topic_url = re.findall('href=\"(.*?)\"', data)[0]
-        answer_url = topic_url + '/top-answers'
-        url = urljoin(TOPIC_URL, answer_url)
+        topic_id = re.findall('href=\"/topic/(.*?)\"', data)[0]
+        url = 'https://www.zhihu.com/topic/{}/top-answers'.format(topic_id)
         task = {
-            'topic_url': url,
-            'method': 'GET'
+            'url': url,
+            'method': 'GET',
+            'meta': {
+                'topic_id': topic_id
+            }
         }
+        logging.info(f'Task production is successful!')
         redis_con.lpush(redis_key, json.dumps(task))
 
 
 def main():
     topic_id_array = parse_topic_id()
+    count = 1
     for topic_id in topic_id_array:
         offset = 0
         while True:
+            logging.info(f'Current task count: {count}')
+            count += 1
             topic_data = download(topic_id, offset * 10)
             offset += 2
             if topic_data['msg']:

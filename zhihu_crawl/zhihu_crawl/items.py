@@ -13,6 +13,7 @@ class ZhihuCrawlItem(scrapy.Item):
 
 
 class TopicItem(scrapy.Item):
+    topic_id = scrapy.Field()
     title = scrapy.Field()
     follower = scrapy.Field()
     answer = scrapy.Field()

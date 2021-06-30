@@ -1,3 +1,11 @@
+'''
+单个话题下的精华问答任务生产
+
+对应的接口例子为：https://www.zhihu.com/api/v4/topics/19555513/feeds/essence
+
+待解决问题：如何确定精华下的问答总数，一旦确定，可通过改写为多线程/进程或者协程快速生产
+'''
+
 import json
 import math
 import logging

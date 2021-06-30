@@ -1,3 +1,7 @@
+'''
+抓取话题广场，解析页面顶部的话题，返回其 topic_id
+'''
+
 import logging
 
 import requests

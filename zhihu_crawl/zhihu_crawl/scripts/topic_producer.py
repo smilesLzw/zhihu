@@ -1,3 +1,9 @@
+'''
+抓取话题广场下的所有大话题类目下的小话题链接。
+
+小话题由 API 请求返回。 
+'''
+
 import re
 import json
 import logging
@@ -53,11 +59,13 @@ def topic_task_producer(topic_data):
         redis_con.lpush(redis_key, json.dumps(task))
 
 
+# 生产话题具体的 URL，当前为单线程，后续可优化为多线程/进程生产
 def main():
     topic_id_array = parse_topic_id()
     count = 1
     for topic_id in topic_id_array:
         offset = 0
+        # 因无法得知话题的总数目，因此通过 while True 方式生产任务，可通过判断请求返回后的 msg 是否为空来终止任务生产
         while True:
             logging.info(f'Current task count: {count}')
             count += 1

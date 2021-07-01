@@ -7,7 +7,6 @@
 import re
 import json
 import logging
-from urllib.parse import urljoin
 
 import redis
 import requests
@@ -16,11 +15,18 @@ from topic_id import parse_topic_id
 
 
 TOPIC_URL = 'https://www.zhihu.com/topic'
-redis_con = redis.Redis(
+redis_con1 = redis.Redis(
     host='localhost',
     port=6379,
     db=10,
 )
+
+redis_con2 = redis.Redis(
+    host='localhost',
+    port=6379,
+    db=10,
+)
+
 logging.basicConfig(level=logging.INFO,
                     format='%(asctime)s - %(levelname)s: %(message)s')
 
@@ -56,7 +62,26 @@ def topic_task_producer(topic_data):
             }
         }
         logging.info(f'Task production is successful!')
-        redis_con.lpush(redis_key, json.dumps(task))
+        redis_con1.lpush(redis_key, json.dumps(task))
+
+
+def question_task_producer(topic_data):
+    redis_key = 'question_crawler:start_urls'
+    for data in topic_data:
+        topic_id = re.findall('href=\"/topic/(.*?)\"', data)[0]
+        url = 'https://www.zhihu.com/api/v4/topics/{}/feeds/essence'.format(topic_id)
+        for offset in range(10):
+            task = {
+                'url': url,
+                'method': 'GET',
+                'body': {
+                    'include': 'data[?(target.type=topic_sticky_module)].target.data[?(target.type=answer)].target.content,relationship.is_authorized,is_author,voting,is_thanked,is_nothelp;data[?(target.type=topic_sticky_module)].target.data[?(target.type=answer)].target.is_normal,comment_count,voteup_count,content,relevant_info,excerpt.author.badge[?(type=best_answerer)].topics;data[?(target.type=topic_sticky_module)].target.data[?(target.type=article)].target.content,voteup_count,comment_count,voting,author.badge[?(type=best_answerer)].topics;data[?(target.type=topic_sticky_module)].target.data[?(target.type=people)].target.answer_count,articles_count,gender,follower_count,is_followed,is_following,badge[?(type=best_answerer)].topics;data[?(target.type=answer)].target.annotation_detail,content,hermes_label,is_labeled,relationship.is_authorized,is_author,voting,is_thanked,is_nothelp,answer_type;data[?(target.type=answer)].target.author.badge[?(type=best_answerer)].topics;data[?(target.type=answer)].target.paid_info;data[?(target.type=article)].target.annotation_detail,content,hermes_label,is_labeled,author.badge[?(type=best_answerer)].topics;data[?(target.type=question)].target.annotation_detail,comment_count;',
+                    'limit': '10',
+                    'offset': str(offset * 10)
+                }
+            }
+            logging.info(f'Question task production is successful!')
+            redis_con2.lpush(redis_key, json.dumps(task))
 
 
 # 生产话题具体的 URL，当前为单线程，后续可优化为多线程/进程生产
@@ -73,6 +98,7 @@ def main():
             offset += 2
             if topic_data['msg']:
                 topic_task_producer(topic_data['msg'])
+                question_task_producer(topic_data['msg'])
                 continue
             else:
                 break

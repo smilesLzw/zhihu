@@ -1,3 +1,5 @@
 .idea/
 zhihu-venv/
 .vscode/
+~vimfilesundodir
+zhihu_crawl/zhihu_crawl/scripts/__pycache__/

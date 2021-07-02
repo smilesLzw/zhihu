@@ -3,7 +3,7 @@
 
 小话题由 API 请求返回。 
 '''
-
+import random
 import re
 import json
 import logging
@@ -12,20 +12,17 @@ import redis
 import requests
 
 from topic_id import parse_topic_id
+from get_proxy import get_proxy_from_api
 
 
 TOPIC_URL = 'https://www.zhihu.com/topic'
-redis_con1 = redis.Redis(
+redis_con = redis.Redis(
     host='localhost',
     port=6379,
     db=10,
 )
 
-redis_con2 = redis.Redis(
-    host='localhost',
-    port=6379,
-    db=10,
-)
+PROXY_ARRAY = get_proxy_from_api()
 
 logging.basicConfig(level=logging.INFO,
                     format='%(asctime)s - %(levelname)s: %(message)s')
@@ -36,12 +33,16 @@ def download(topic_id, offset):
     headers = {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/90.0.4430.93 Safari/537.36'
     }
+    ip = random.choice(PROXY_ARRAY)
+    proxy = {
+        'https': f'http://{ip["ip"]}:{ip["port"]}'
+    }
     data = {
         'method': 'next',
         'params': f'{{"topic_id": {topic_id},"offset": {offset},"hash_id":""}}'
     }
     try:
-        res = requests.post(topic_api_url, headers=headers, data=data)
+        res = requests.post(topic_api_url, headers=headers, data=data, proxies=proxy)
         if res.status_code == 200:
             return res.json()
         logging.error(f'get invalid status code {res.status_code} while offset is {offset}')
@@ -62,7 +63,7 @@ def topic_task_producer(topic_data):
             }
         }
         logging.info(f'Task production is successful!')
-        redis_con1.lpush(redis_key, json.dumps(task))
+        redis_con.lpush(redis_key, json.dumps(task))
 
 
 def question_task_producer(topic_data):
@@ -81,7 +82,7 @@ def question_task_producer(topic_data):
                 }
             }
             logging.info(f'Question task production is successful!')
-            redis_con2.lpush(redis_key, json.dumps(task))
+            redis_con.lpush(redis_key, json.dumps(task))
 
 
 # 生产话题具体的 URL，当前为单线程，后续可优化为多线程/进程生产

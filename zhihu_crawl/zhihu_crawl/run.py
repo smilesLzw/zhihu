@@ -1,4 +1,4 @@
 from scrapy import cmdline
 
-command = 'scrapy crawl question_crawler'.split()
+command = 'scrapy crawl topic_crawler'.split()
 cmdline.execute(command)

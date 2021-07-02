@@ -22,7 +22,6 @@ class TopicCrawler(RedisSpider):
         )
 
     def parse_topic_index(self, response):
-        print(response.body)
         html = response.body.decode('utf-8')
         soup = BeautifulSoup(html, 'lxml')
         try:

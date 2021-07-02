@@ -2,11 +2,16 @@
 #
 # See documentation in:
 # https://docs.scrapy.org/en/latest/topics/spider-middleware.html
+import random
 
 from scrapy import signals
 
+from scripts.get_proxy import get_proxy_from_api
+
 # useful for handling different item types with a single interface
 from itemadapter import is_item, ItemAdapter
+
+PROXY_ARRAY = get_proxy_from_api()
 
 
 class ZhihuCrawlSpiderMiddleware:
@@ -101,3 +106,10 @@ class ZhihuCrawlDownloaderMiddleware:
 
     def spider_opened(self, spider):
         spider.logger.info('Spider opened: %s' % spider.name)
+
+
+class ProxyMiddleware:
+    def process_request(self, request, spider):
+        ip = random.choice(PROXY_ARRAY)
+        ip = f'https://{ip["ip"]}:{ip["port"]}'
+        request.mera['proxy'] = ip

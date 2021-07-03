@@ -22,13 +22,11 @@ redis_con = redis.Redis(
     db=10,
 )
 
-PROXY_ARRAY = get_proxy_from_api()
-
 logging.basicConfig(level=logging.INFO,
                     format='%(asctime)s - %(levelname)s: %(message)s')
 
 
-def download(topic_id, offset):
+def download(topic_id, offset, PROXY_ARRAY):
     topic_api_url = 'https://www.zhihu.com/node/TopicsPlazzaListV2'
     headers = {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/90.0.4430.93 Safari/537.36'
@@ -41,13 +39,17 @@ def download(topic_id, offset):
         'method': 'next',
         'params': f'{{"topic_id": {topic_id},"offset": {offset},"hash_id":""}}'
     }
-    try:
-        res = requests.post(topic_api_url, headers=headers, data=data, proxies=proxy)
-        if res.status_code == 200:
-            return res.json()
-        logging.error(f'get invalid status code {res.status_code} while offset is {offset}')
-    except requests.RequestException:
-        logging.error(f'error occurred while offset is {offset}')
+    retry_count = 5
+    while retry_count > 0:
+        try:
+            res = requests.post(topic_api_url, headers=headers, data=data, proxies=proxy, timeout=3)
+            if res.status_code == 200:
+                return res.json()
+            logging.error(f'get invalid status code {res.status_code} while offset is {offset}')
+        except requests.RequestException:
+            retry_count -= 1
+    PROXY_ARRAY.remove(ip)
+    return None
 
 
 def topic_task_producer(topic_data):
@@ -87,17 +89,20 @@ def question_task_producer(topic_data):
 
 # 生产话题具体的 URL，当前为单线程，后续可优化为多线程/进程生产
 def main():
+    PROXY_ARRAY = get_proxy_from_api()
     topic_id_array = parse_topic_id()
     count = 1
     for topic_id in topic_id_array:
         offset = 0
         # 因无法得知话题的总数目，因此通过 while True 方式生产任务，可通过判断请求返回后的 msg 是否为空来终止任务生产
         while True:
+            if len(PROXY_ARRAY) < 5:
+                PROXY_ARRAY = PROXY_ARRAY.append(get_proxy_from_api())
             logging.info(f'Current task count: {count}')
             count += 1
-            topic_data = download(topic_id, offset * 10)
+            topic_data = download(topic_id, offset * 10, PROXY_ARRAY)
             offset += 2
-            if topic_data['msg']:
+            if topic_data and topic_data['msg']:
                 topic_task_producer(topic_data['msg'])
                 question_task_producer(topic_data['msg'])
                 continue

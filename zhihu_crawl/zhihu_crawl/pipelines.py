@@ -25,7 +25,7 @@ class QuestionCrawlPipeline:
         self.redis_con = redis.Redis(
             host='localhost',
             port=6379,
-            db=11
+            db=10
         )
         self.redis_key = 'answer:start_urls'
 
